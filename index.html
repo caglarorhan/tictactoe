@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TicTacToe</title>
+    <style>
+
+        X[type="checkbox"]:checked:after {
+            /* Heres your symbol replacement */
+            content: "X";
+            color: #fff;
+            font-size: 200px;
+            position: absolute;
+            background: blue;
+        }
+        B[type="checkbox"]:checked:after {
+            /* Heres your symbol replacement */
+            content: "O";
+            color: #fff;
+            font-size: 200px;
+            position: absolute;
+            background: red;
+        }
+
+
+
+    </style>
+    <script src="tictactoe.js"></script>
+    <script>
+        window.addEventListener('load',()=>{
+            let boardConfig = {
+                boardContainer: 'denemeTTT',
+                boardId:'tictactoe',
+                boardSize:3,
+                boardWidth:600,
+                boardMarginTop:100,
+                boardMarginLeft:'auto',
+                players:[
+                    {name:'Caglar',symbol:'X',color:'blue'},
+                    {name:'Ahmet',symbol:'O',color:'red'}
+                ]
+            }
+
+            tictactoe.init(boardConfig);
+        });
+    </script>
+</head>
+<body>
+
+<div id="denemeTTT"></div>
+</body>
+</html>
