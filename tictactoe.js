@@ -20,12 +20,15 @@ const tictactoe = {
                 let containerWidth=Math.floor(100/boardConfig.boardSize);
                 let board = document.createElement('div');
                 board.id=boardConfig.boardId;
-                console.log('BOARD ID:',boardConfig.boardId)
+                console.log('BOARD ID:',boardConfig.boardId);
+                console.log('BOARD WIDTH:',boardConfig.boardWidth);
                 board.style.cssText=`
+                width:${boardConfig.boardWidth}px; 
                 display: flex;
                 flex-wrap: wrap;
                 justify-content: space-between;`;
                 boardContainer = !boardConfig.boardContainer ?document.body : document.getElementById(boardConfig.boardContainer);
+
                 boardContainer.append(board);
                 boardArray.forEach((element,index)=>{
                     board.append(tictactoe.gimmeNewSquare(containerWidth,index))
@@ -44,7 +47,7 @@ const tictactoe = {
         signs.forEach((sign)=>{
             sign.addEventListener('click',(e)=>{
                 if(e.target.classList.length===0){
-                    e.target.classList.add();
+                    e.target.classList.add('X');
                 }
             })
         })
@@ -52,6 +55,7 @@ const tictactoe = {
     gimmeNewSquare:(containerWidth,index)=>{
         const container = document.createElement('div');
         container.style.width = containerWidth-1+'%';
+        container.style.height = 200+'px';
         container.style.position= 'relative';
 
         const square = document.createElement('input');
@@ -62,8 +66,6 @@ const tictactoe = {
         height: 100%;
         -webkit-appearance: initial;
         appearance: initial;
-        width: 40px;
-        height: 40px;
         border: 1px solid #000;
         position: relative;
         background: antiquewhite;
