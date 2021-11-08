@@ -6,7 +6,6 @@
     <style>
 
         .X[type="checkbox"]:checked:after {
-            /* Heres your symbol replacement */
             content: "X";
             color: #fff;
             font-size: 200px;
@@ -16,8 +15,7 @@
             height: 100%;
             text-align: center;
         }
-        .B[type="checkbox"]:checked:after {
-            /* Heres your symbol replacement */
+        .Y[type="checkbox"]:checked:after {
             content: "O";
             color: #fff;
             font-size: 200px;
@@ -36,16 +34,13 @@
     <script>
         window.addEventListener('load',()=>{
             let boardConfig = {
+                gameStarterTriggerElementId: 'startGame',
                 boardContainer: 'denemeTTT',
                 boardId:'tictactoe',
                 boardSize:3,
                 boardWidth:600,
                 boardMarginTop:100,
-                boardMarginLeft:'auto',
-                players:[
-                    {name:'Caglar',symbol:'X',color:'blue'},
-                    {name:'Ahmet',symbol:'O',color:'red'}
-                ]
+                boardMarginLeft:'auto'
             }
 
             tictactoe.init(boardConfig);
@@ -53,7 +48,7 @@
     </script>
 </head>
 <body>
-
+<button id="startGame">START GAME</button>
 <div id="denemeTTT"></div>
 </body>
 </html>

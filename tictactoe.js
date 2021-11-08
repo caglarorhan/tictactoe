@@ -1,15 +1,19 @@
 const tictactoe = {
     init:async (boardConfig)=>{
-        tictactoe.initBoard(boardConfig)
-            .then(board=>{
+        document.getElementById(boardConfig.gameStarterTriggerElementId).addEventListener('click',()=>{
+            if(document.getElementById(boardConfig.boardId)){return false}
+            tictactoe.initBoard(boardConfig)
+                .then(board=>{
 
-        })
-            .catch(err=>{
-                console.log(`
+                })
+                .catch(err=>{
+                    console.log(`
                 There was a problem. Board couldn't be created!
                 Reason is: ${err}
                 `)
-            })
+                })
+        })
+
     },
     initBoard: async (boardConfig)=>{
         return new Promise((resolve,reject)=>{
@@ -34,7 +38,13 @@ const tictactoe = {
                     board.append(tictactoe.gimmeNewSquare(containerWidth,index))
                 });
                 tictactoe.boardEventListener(boardConfig)
-                resolve(board)}
+                    .then(isListened=>{
+                        resolve(board)
+                    })
+                    .catch(err=>{
+                        reject(err)
+                    })
+                }
             catch(err){
                 reject(err)
             }
@@ -42,14 +52,39 @@ const tictactoe = {
 
         })
     },
-    boardEventListener:(boardConfig)=>{
-        const signs = document.querySelectorAll(`#${boardConfig.boardId} input`);
-        signs.forEach((sign)=>{
-            sign.addEventListener('click',(e)=>{
-                if(e.target.classList.length===0){
-                    e.target.classList.add('X');
-                }
-            })
+    sendClickedSquare: async (squareId)=>{
+        let opponentResponse=  fetch('tictactoe.caglarorhan.com',{
+            method: 'POST',
+            headers: {"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"},
+            body: 'signedSquareId='+squareId
+        });
+        return await opponentResponse.json();
+    },
+    boardCacheCreate: (boardConfig)=>{
+        return new Promise((resolve,reject)=>{})
+    },
+    boardEventListener:async (boardConfig)=>{
+        return new Promise((resolve,reject)=>{
+            try{
+                const signs = document.querySelectorAll(`#${boardConfig.boardId} input`);
+                signs.forEach((sign)=>{
+                    sign.addEventListener('click',(e)=>{
+                        if(e.target.classList.length===0){
+                            tictactoe.sendClickedSquare(e.target.id)
+                                .then(result=>{
+                                e.target.classList.add('X');
+                            })
+                                .catch(err=>{
+                                    console.log(`Error occured:${err}`)
+                                })
+                        }
+                    })
+                })
+                resolve(true);
+            }
+            catch(err){
+                reject(err);
+            }
         })
     },
     gimmeNewSquare:(containerWidth,index)=>{
