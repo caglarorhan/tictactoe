@@ -30,25 +30,9 @@
 
 
     </style>
-    <script src="tictactoe.js"></script>
-    <script>
-        window.addEventListener('load',()=>{
-            let boardConfig = {
-                gameStarterTriggerElementId: 'startGame',
-                boardContainer: 'denemeTTT',
-                boardId:'tictactoe',
-                boardSize:3,
-                boardWidth:600,
-                boardMarginTop:100,
-                boardMarginLeft:'auto'
-            }
-
-            tictactoe.init(boardConfig);
-        });
-    </script>
+    <script src="tictactoe.js" type="module"></script>
 </head>
 <body>
-<button id="startGame">START GAME</button>
 <div id="denemeTTT"></div>
 </body>
 </html>
