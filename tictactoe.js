@@ -1,7 +1,7 @@
 import {boardConfig, firebaseConfig} from "./config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.4.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,onAuthStateChanged   } from "https://www.gstatic.com/firebasejs/9.4.1/firebase-auth.js"
-import { getFirestore } from "https://www.gstatic.com/firebasejs/9.4.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, updateDoc, arrayUnion} from "https://www.gstatic.com/firebasejs/9.4.1/firebase-firestore.js";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -9,38 +9,71 @@ const auth = getAuth();
 const user = auth.currentUser;
 const db = getFirestore();
 
+// User profile
+if (user !== null) {
+    // The user object has basic properties such as display name, email, etc.
+    const displayName = user.displayName;
+    const email = user.email;
+    const photoURL = user.photoURL;
+    const emailVerified = user.emailVerified;
+
+    // The user's ID, unique to the Firebase project. Do NOT use
+    // this value to authenticate with your backend server, if
+    // you have one. Use User.getToken() instead.
+    const uid = user.uid;
+}
+
+// Observing the state changes
 onAuthStateChanged(auth, (user) => {
     if (user) {
         // User is signed in, see docs for a list of available properties
         // https://firebase.google.com/docs/reference/js/firebase.User
         const uid = user.uid;
+        console.log(user.uid);
+        console.log(user.email);
+        tictactoe.createSignOut(user);
         // ...
     } else {
         // User is signed out
         // ...
+        tictactoe.createSignUpIn();
     }
 });
 
-
-const cE = (eType, eId)=>{let e = document.createElement(eType); e.id=eId; return e;};
+const cE = (eType, eId)=>{let e = document.getElementById(eId)??document.createElement(eType); e.id=eId??eType+'_'+ (Math.random()*Math.random()); return e;};
 const tictactoe = {
-    init:async (boardConfig)=>{
-        let gameStarter = cE("button",boardConfig.gameStarterTriggerElementId);
-        gameStarter.innerHTML = "Start Game";
-        document.getElementById(boardConfig.boardContainer).append(gameStarter);
-        gameStarter.addEventListener('click',()=>{
-            if(document.getElementById(boardConfig.boardId)){return false}
-            tictactoe.initBoard(boardConfig)
-                .then(board=>{
+    init:async (boardConfig, user)=>{
+        tictactoe.user = user;
+        let newGameSessionSetter = cE('button','newGameSessionSetter');
+        let boardSizeInput = cE("input",'board_size'); boardSizeInput.type='number'; boardSizeInput.min=3; boardSizeInput.max=10; boardSizeInput.value=boardConfig.boardSize;
+        let boardSizeLabel = cE("label",'board_size_label'); boardSizeLabel.innerText='Board Size:';
+        let emoLabel = cE("label",'emo_label'); emoLabel.innerText='Emoji:';
+        let isGamePrivateLabel = cE("label",'is_game_private_label'); isGamePrivateLabel.innerText='Is Game Private:';
+        let isGamePrivateInput = cE("input",'is_game_private'); isGamePrivateInput.type='checkbox';
+        let emoSelect = cE("select",'emo'); boardConfig.emo.forEach(emo=>{
+            let option = cE("option",emo); option.value=emo; option.innerText=emo;
+            emoSelect.appendChild(option);
+        });
 
-                })
-                .catch(err=>{
-                    console.log(`
-                There was a problem. Board couldn't be created!
-                Reason is: ${err}
-                `)
-                })
-        })
+        newGameSessionSetter.innerText='Set A New Game';
+        newGameSessionSetter.addEventListener('click',()=>{
+            let boardSize = boardSizeInput.value;
+            let emo = emoSelect.value;
+            tictactoe.createNewGameSession(user,boardSize,emo);
+        });
+
+
+        document.getElementById(boardConfig.boardContainer).append(boardSizeLabel);
+        document.getElementById(boardConfig.boardContainer).append(boardSizeInput);
+        document.getElementById(boardConfig.boardContainer).append(emoLabel);
+        document.getElementById(boardConfig.boardContainer).append(emoSelect);
+        document.getElementById(boardConfig.boardContainer).append(isGamePrivateLabel);
+        document.getElementById(boardConfig.boardContainer).append(isGamePrivateInput);
+        document.getElementById(boardConfig.boardContainer).append(newGameSessionSetter);
+
+
+
+
 
     },
     initBoard: async (boardConfig)=>{
@@ -48,21 +81,21 @@ const tictactoe = {
             try{
                 let boardArray;
                 let boardContainer;
-                boardArray = Array(Math.pow(boardConfig.boardSize,2)).fill(null,0);
-                let containerWidth=Math.floor(100/boardConfig.boardSize);
+                let boardSize = document.getElementById('board_size');
+                boardArray = Array(Math.pow(boardSize.value,2)).fill(null,0);
                 let board = cE('div',boardConfig.boardId);
                 console.log('BOARD ID:',boardConfig.boardId);
-                console.log('BOARD WIDTH:',boardConfig.boardWidth);
+                console.log('BOARD ONE SQUARE WIDTH:',boardConfig.boardOneSquareWidth);
+                console.log(`BOARD WIDTH: ${boardConfig.boardOneSquareWidth*boardSize.value}`)
                 board.style.cssText=`
-                width:${boardConfig.boardWidth}px; 
+                width:${boardConfig.boardOneSquareWidth*boardSize.value}px; 
+                height:${boardConfig.boardOneSquareWidth*boardSize.value}px; 
                 display: flex;
-                flex-wrap: wrap;
-                justify-content: space-between;`;
+                flex-wrap: wrap;`;
                 boardContainer = !boardConfig.boardContainer ?document.body : document.getElementById(boardConfig.boardContainer);
-
                 boardContainer.append(board);
                 boardArray.forEach((element,index)=>{
-                    board.append(tictactoe.gimmeNewSquare(containerWidth,index))
+                    board.append(tictactoe.gimmeNewSquare(boardConfig.boardOneSquareWidth,index))
                 });
                 tictactoe.boardEventListener(boardConfig)
                     .then(isListened=>{
@@ -79,6 +112,20 @@ const tictactoe = {
 
         })
     },
+    putEmoji: (squareId,emoji)=>{
+        let theSquare = document.querySelector(`#${boardConfig.boardId} #squareContainer_${squareId}`);
+        let emojiContainer = cE('div','emoji_container');
+            emojiContainer.style.cssText=`  width:100%;
+                                height:100%;
+                                position:absolute;
+                                font-size:${document.getElementById(squareId).offsetWidth/2}px;
+                                left:10%;
+                                top:10%;
+                                `;
+
+            emojiContainer.innerText = emoji;
+            theSquare.append(emojiContainer);
+    },
     boardEventListener:async (boardConfig)=>{
         return new Promise((resolve,reject)=>{
             try{
@@ -86,10 +133,23 @@ const tictactoe = {
                 signs.forEach((sign)=>{
                     sign.addEventListener('click',(e)=>{
                         if(e.target.classList.length===0){
-                            tictactoe.sendClickedSquare(e.target.id)
+                            let moveData = {userId:tictactoe.user.uid,squareId:e.target.id}
+                            tictactoe.sendMoveDataToServer(moveData)
                                 .then(result=>{
-                                e.target.classList.add('X');
-                            })
+                                    // assume result is true (from server)
+                                    // TODO: update local board and localStorage
+
+                                    tictactoe.updateGameDataWithMove(tictactoe.gameSessionId,moveData)
+                                        .then(result=>{
+                                            resolve(true)
+                                        })
+                                        .catch(err=>{
+                                            reject(err)
+                                        })
+                                    // TODO: insert users emoji into this square
+                                    // TODO: check if any user wins
+
+                                })
                                 .catch(err=>{
                                     console.log(`Error occured:${err}`)
                                 })
@@ -103,15 +163,26 @@ const tictactoe = {
             }
         })
     },
-    gimmeNewSquare:(containerWidth,index)=>{
-        const container = cE('div');
-        container.style.width = containerWidth-1+'%';
-        container.style.height = 200+'px';
+    sendMoveDataToServer: async (moveData)=>{
+        const thisGameDoc = (db, "game_sessions", tictactoe.gameSessionId);
+        await updateDoc(thisGameDoc, {
+            moves: arrayUnion(moveData)
+        });
+        return new Promise((resolve,reject)=>{
+            //send clicked square to server and wait for response
+            // if response is true, then resolve
+
+            resolve(true)
+        })
+    },
+    gimmeNewSquare:(boardOneSquareWidth,index)=>{
+        const container = cE('div','squareContainer_'+index);
+        container.style.width = boardOneSquareWidth+'px';
+        container.style.height = boardOneSquareWidth+'px';
         container.style.position= 'relative';
 
-        const square = cE('input');
+        const square = cE('input',index);
         square.type = 'checkbox';
-        square.id=index;
         square.style.cssText=`
         width: 100%;
         height: 100%;
@@ -120,14 +191,13 @@ const tictactoe = {
         border: 1px solid #000;
         position: relative;
         background: antiquewhite;
+        margin: 0;
         `;
         container.append(square);
         return container
     },
     createSignUpIn:()=>{
-        if(document.getElementById('signOutContainer')){
-            document.getElementById('signOutContainer').remove();
-        }
+        document.getElementById(boardConfig.boardContainer).innerHTML='';
         let signUpInContainer = cE('div','signUpInContainer');
         let email=cE('input','email');
         let password = cE('input','password'); password.type='password';
@@ -141,15 +211,13 @@ const tictactoe = {
             tictactoe.createUserWithEmailAndPassword(auth,email.value, password.value)
         })
     },
-    createSignOut:()=>{
-        if(document.getElementById('signUpInContainer')){
-            document.getElementById('signUpInContainer').remove();
-        }
+    createSignOut:(user)=>{
+        document.getElementById(boardConfig.boardContainer).innerHTML='';
         let signOutContainer = cE('div','signOutContainer');
         let signOutButton = cE('button','signOutButton');
         signOutButton.innerText = 'Sign Out';
         signOutButton.style.cssText=`position:fixed; top:5px; right:5px;`;
-        tictactoe.init(boardConfig).then(board=>{
+        tictactoe.init(boardConfig,user).then(board=>{
             // board created
         })
         signOutContainer.append(signOutButton);
@@ -196,8 +264,67 @@ const tictactoe = {
                 // // ..
             });
     },
+    createNewGameSession:async (user)=>{
+        console.log(user);
+        console.log(`Creating new game session for ${user.email}`);
+        let isGamePrivate= document.getElementById('is_game_private').checked;
+        let userEmoji = document.getElementById('emo').value;
+        let gameSessionCreationMoment = Date.now();
+        let gameSessionId = user.uid+'_'+ gameSessionCreationMoment;
+        tictactoe.gameSessionId = gameSessionId;
+
+        let gameData = {
+            owner: user.uid,
+            set_moment: gameSessionCreationMoment,
+            status: 'justSet',
+            game_props: {isGamePrivate:isGamePrivate},
+            players: [{userId: user.uid, userEmoji: userEmoji}],
+            moves:[]
+        };
+        // moves {userId: user.uid, squareId: squareId}
+        let theGameSet = await setDoc(doc(db, "game_sessions", gameSessionId), gameData)
+            await tictactoe.saveGameData(gameSessionId,gameData);
+            await tictactoe.startGame(user,gameSessionId);
+
+    },
+    startGame:async (user, gameSessionId)=>{
+        console.log(`Game is ready to start for ${user.email}`);
+        let gameStarter = cE("button",boardConfig.gameStarterTriggerElementId);
+        gameStarter.innerHTML = "Start Game";
+        document.getElementById(boardConfig.boardContainer).append(gameStarter);
+        gameStarter.addEventListener('click',()=>{
+            if(document.getElementById(boardConfig.boardId)){return false}
+            tictactoe.initBoard(boardConfig)
+                .then(board=>{
+
+                })
+                .catch(err=>{
+                    console.log(`
+                There was a problem. Board couldn't be created!
+                Reason is: ${err}
+                `)
+                })
+        })
+    },
+    saveGameData:async (gameSessionId,gameData)=>{
+        console.log(`Game is saving into localStorage...`);
+        let gameDataWithGameSessionId = {gameSessionId: gameSessionId, ...gameData};
+        let gameDataString = JSON.stringify(gameDataWithGameSessionId);
+        localStorage.setItem(gameSessionId,gameDataString);
+        //            players: [{userId: user.uid, userEmoji: userEmoji}],
+        //             moves:[{userId: user.uid, squareId: squareId}]
+    },
+    readGameData:async (gameSessionId)=>{
+        console.log(`Game is reading from localStorage...`);
+        let gameDataString = localStorage.getItem(gameSessionId);
+        return JSON.parse(gameDataString);
+    },
+    updateGameDataWithMove:async (gameSessionId,moveData)=>{
+        // moveData {userId: user.uid, squareId: squareId}
+        let currentGameData = await tictactoe.readGameData(gameSessionId);
+        let updatedGameData = {...currentGameData, moves:[...currentGameData.moves,moveData]};
+        await tictactoe.saveGameData(gameSessionId,updatedGameData);
+    },
 }
 
-window.onload = () => {
-    tictactoe.createSignUpIn()
-}
+
