@@ -164,16 +164,17 @@ const tictactoe = {
         })
     },
     sendMoveDataToServer: async (moveData)=>{
-        const thisGameDoc = (db, "game_sessions", tictactoe.gameSessionId);
-        await updateDoc(thisGameDoc, {
-            moves: arrayUnion(moveData)
-        });
         return new Promise((resolve,reject)=>{
-            //send clicked square to server and wait for response
-            // if response is true, then resolve
-
-            resolve(true)
+            const thisGameDoc = doc(db, "game_sessions", tictactoe.gameSessionId);
+            updateDoc(thisGameDoc, {
+                moves: arrayUnion(moveData)
+            }).then(result => {
+                resolve(true)
+            }).catch(err => {
+                reject(err)
+            })
         })
+
     },
     gimmeNewSquare:(boardOneSquareWidth,index)=>{
         const container = cE('div','squareContainer_'+index);
@@ -277,7 +278,7 @@ const tictactoe = {
             owner: user.uid,
             set_moment: gameSessionCreationMoment,
             status: 'justSet',
-            game_props: {isGamePrivate:isGamePrivate},
+            game_props: {isGamePrivate:isGamePrivate, boardSize:boardConfig.boardSize},
             players: [{userId: user.uid, userEmoji: userEmoji}],
             moves:[]
         };
